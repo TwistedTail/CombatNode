@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace CombatNode
+namespace CombatNode.Mapping
 {
 	public class Node
 	{
@@ -25,16 +25,12 @@ namespace CombatNode
 		// TODO: Store more information inside of this
 		public void Connect(Node target)
 		{
-			if (target == null) { return; }
-
 			Sides.Remove(target);
 			Sides.Add(target, (FootPos - target.FootPos).Length());
 		}
 
 		public void Disconnect(Node target)
 		{
-			if (target == null) { return; }
-
 			Sides.Remove(target);
 		}
 
@@ -48,7 +44,6 @@ namespace CombatNode
 			}
 		}
 
-		// TODO: Test this thing
 		public void PushToLua(ILua lua)
 		{
 			lua.CreateTable();

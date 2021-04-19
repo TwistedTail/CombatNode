@@ -1,85 +1,31 @@
-﻿using GmodNET.API;
+﻿using CombatNode.Utilities;
+using GmodNET.API;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace CombatNode
+namespace CombatNode.Mapping
 {
 	public static class Grid
 	{
 		public static readonly Dictionary<Vector3, Node> Nodes = new();
 		public static readonly Vector3 NodeSize = new(35, 35, 75); // Roughly the same size as a standing player
 
-		public static void LoadServer(ILua lua)
+		public static void Load(ILua lua)
 		{
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(AddNode);
-			lua.SetField(-2, "AddNode");
-			lua.Pop();
+			LuaStack.PushVector(lua, "NodeSize", NodeSize);
 
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(ConnectNodes);
-			lua.SetField(-2, "ConnectNodes");
-			lua.Pop();
+			LuaStack.PushFunction(lua, "GetCoordinates", GetCoordinates);
+			LuaStack.PushFunction(lua, "GetRoundedPos", GetRoundedPos);
+			LuaStack.PushFunction(lua, "GetNodeCount", GetNodeCount);
+			LuaStack.PushFunction(lua, "GetNode", GetNode);
 
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(DisconnectNodes);
-			lua.SetField(-2, "DisconnectNodes");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(RemoveNode);
-			lua.SetField(-2, "RemoveNode");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(RemoveAllNodes);
-			lua.SetField(-2, "RemoveAllNodes");
-			lua.Pop();
-		}
-
-		public static void LoadShared(ILua lua)
-		{
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushVector(NodeSize);
-			lua.SetField(-2, "NodeSize");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(GetCoordinates);
-			lua.SetField(-2, "GetCoordinates");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(GetRoundedPos);
-			lua.SetField(-2, "GetRoundedPos");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(GetNodeCount);
-			lua.SetField(-2, "GetNodeCount");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(HasNode);
-			lua.SetField(-2, "HasNode");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(GetNode);
-			lua.SetField(-2, "GetNode");
-			lua.Pop();
+			LuaStack.PushFunction(lua, "HasNode", HasNode);
+			LuaStack.PushFunction(lua, "AddNode", AddNode);
+			LuaStack.PushFunction(lua, "ConnectNodes", ConnectNodes);
+			LuaStack.PushFunction(lua, "DisconnectNodes", DisconnectNodes);
+			LuaStack.PushFunction(lua, "RemoveNode", RemoveNode);
+			LuaStack.PushFunction(lua, "RemoveAllNodes", RemoveAllNodes);
 		}
 
 		public static Vector3 GetCoordinates(Vector3 coords)

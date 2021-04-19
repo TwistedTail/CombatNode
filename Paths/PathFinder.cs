@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using CombatNode.Mapping;
+using System.Collections.Generic;
 
-namespace CombatNode
+namespace CombatNode.Paths
 {
 	public class PathFinder
 	{

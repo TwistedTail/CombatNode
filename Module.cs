@@ -1,5 +1,5 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using CombatNode.Mapping;
+using CombatNode.Paths;
 using GmodNET.API;
 
 namespace CombatNode
@@ -7,7 +7,7 @@ namespace CombatNode
 	public class Module : IModule
 	{
 		public string ModuleName => "Combat Node";
-		public string ModuleVersion => "0.1";
+		public string ModuleVersion => "0.2";
 
 		public void Load(ILua lua, bool is_serverside, ModuleAssemblyLoadContext assembly_context)
 		{
@@ -15,15 +15,13 @@ namespace CombatNode
 			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
 			lua.CreateTable();
 			lua.SetField(-2, "CNode");
-			lua.Pop(1);
+			lua.Pop();
 
 			if (is_serverside)
 			{
-				PathManager.LoadServer(lua);
-				Grid.LoadServer(lua);
+				PathManager.Load(lua);
+				Grid.Load(lua);
 			}
-
-			Grid.LoadShared(lua);
 		}
 
 		public void Unload(ILua lua) {}

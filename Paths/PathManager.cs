@@ -1,33 +1,21 @@
-﻿using GmodNET.API;
+﻿using CombatNode.Mapping;
+using CombatNode.Utilities;
+using GmodNET.API;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
 
-namespace CombatNode
+namespace CombatNode.Paths
 {
 	public static class PathManager
 	{
 		private static readonly Dictionary<string, Stack<Node>> Results = new();
 
-		public static void LoadServer(ILua lua)
+		public static void Load(ILua lua)
 		{
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(QueuePath);
-			lua.SetField(-2, "QueuePath");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(DiscardPath);
-			lua.SetField(-2, "DiscardPath");
-			lua.Pop();
-
-			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
-			lua.GetField(-1, "CNode");
-			lua.PushManagedFunction(GetPath);
-			lua.SetField(-2, "GetPath");
-			lua.Pop();
+			LuaStack.PushFunction(lua, "QueuePath", QueuePath);
+			LuaStack.PushFunction(lua, "DiscardPath", DiscardPath);
+			LuaStack.PushFunction(lua, "GetPath", GetPath);
 		}
 
 		private static int QueuePath(ILua lua)
@@ -40,11 +28,8 @@ namespace CombatNode
 			Vector3 FromCoords = Grid.GetCoordinates(lua.GetVector(2));
 			Vector3 ToCoords = Grid.GetCoordinates(lua.GetVector(3));
 
-			Grid.Nodes.TryGetValue(FromCoords, out Node From);
-			Grid.Nodes.TryGetValue(ToCoords, out Node To);
-
-			if (From == null) { return 0; }
-			if (To == null) { return 0; }
+			if (!Grid.Nodes.TryGetValue(FromCoords, out Node From)) { return 0; }
+			if (!Grid.Nodes.TryGetValue(ToCoords, out Node To)) { return 0; }
 
 			PathFinder Finder = new();
 
@@ -74,9 +59,7 @@ namespace CombatNode
 
 			string UniqueID = lua.GetString(1);
 
-			Results.TryGetValue(UniqueID, out Stack<Node> Result);
-
-			if (Result == null) { return 0; }
+			if (!Results.TryGetValue(UniqueID, out Stack<Node> Result)) { return 0; }
 
 			lua.CreateTable();
 
