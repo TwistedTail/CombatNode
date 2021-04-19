@@ -22,7 +22,7 @@ namespace CombatNode
 		
 		private float GetCost(Node from)
 		{
-			return (from.FeetPos - End.FeetPos).Length();
+			return (from.FootPos - End.FootPos).Length();
 		}
 
 		private void ClearSide(Node side)

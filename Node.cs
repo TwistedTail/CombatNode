@@ -8,17 +8,17 @@ namespace CombatNode
 	{
 		public readonly Vector3 Coordinates;
 		public readonly Vector3 Position;
-		public readonly Vector3 FeetPos;
+		public readonly Vector3 FootPos;
 		public readonly Dictionary<Node, float> Sides;
 		public bool Crouch = false;
 		public bool Swim = false;
 		public float Depth = 0;
 
-		public Node(Vector3 coords, Vector3 feetPos)
+		public Node(Vector3 coords, Vector3 footPos)
 		{
 			Coordinates = coords;
 			Position = coords * Grid.NodeSize;
-			FeetPos = feetPos;
+			FootPos = footPos;
 			Sides = new Dictionary<Node, float>();
 		}
 
@@ -28,7 +28,7 @@ namespace CombatNode
 			if (target == null) { return; }
 
 			Sides.Remove(target);
-			Sides.Add(target, (FeetPos - target.FeetPos).Length());
+			Sides.Add(target, (FootPos - target.FootPos).Length());
 		}
 
 		public void Disconnect(Node target)
@@ -56,12 +56,8 @@ namespace CombatNode
 			lua.SetField(-2, "Coordinates");
 			lua.PushVector(Position);
 			lua.SetField(-2, "Position");
-
-			if (FeetPos.Length() > 0)
-			{
-				lua.PushVector(FeetPos);
-				lua.SetField(-2, "FeetPos");
-			}
+			lua.PushVector(FootPos);
+			lua.SetField(-2, "FootPos");
 
 			if (Swim)
 			{
