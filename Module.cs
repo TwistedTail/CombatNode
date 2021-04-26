@@ -7,7 +7,7 @@ namespace CombatNode
 	public class Module : IModule
 	{
 		public string ModuleName => "Combat Node";
-		public string ModuleVersion => "0.2";
+		public string ModuleVersion => "0.3";
 
 		public void Load(ILua lua, bool is_serverside, ModuleAssemblyLoadContext assembly_context)
 		{

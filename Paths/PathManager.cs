@@ -13,9 +13,9 @@ namespace CombatNode.Paths
 
 		public static void Load(ILua lua)
 		{
-			LuaStack.PushFunction(lua, "QueuePath", QueuePath);
-			LuaStack.PushFunction(lua, "DiscardPath", DiscardPath);
-			LuaStack.PushFunction(lua, "GetPath", GetPath);
+			LuaStack.PushGlobalFunction(lua, "QueuePath", QueuePath);
+			LuaStack.PushGlobalFunction(lua, "DiscardPath", DiscardPath);
+			LuaStack.PushGlobalFunction(lua, "GetPath", GetPath);
 		}
 
 		private static int QueuePath(ILua lua)

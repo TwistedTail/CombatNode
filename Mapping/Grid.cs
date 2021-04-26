@@ -8,24 +8,29 @@ namespace CombatNode.Mapping
 {
 	public static class Grid
 	{
+		private static readonly HashSet<Node> Unused = new();
 		public static readonly Dictionary<Vector3, Node> Nodes = new();
 		public static readonly Vector3 NodeSize = new(35, 35, 75); // Roughly the same size as a standing player
 
 		public static void Load(ILua lua)
 		{
-			LuaStack.PushVector(lua, "NodeSize", NodeSize);
+			LuaStack.PushGlobalVector(lua, "NodeSize", NodeSize);
 
-			LuaStack.PushFunction(lua, "GetCoordinates", GetCoordinates);
-			LuaStack.PushFunction(lua, "GetRoundedPos", GetRoundedPos);
-			LuaStack.PushFunction(lua, "GetNodeCount", GetNodeCount);
-			LuaStack.PushFunction(lua, "GetNode", GetNode);
+			LuaStack.PushGlobalFunction(lua, "GetCoordinates", GetCoordinates);
+			LuaStack.PushGlobalFunction(lua, "GetRoundedPos", GetRoundedPos);
+			LuaStack.PushGlobalFunction(lua, "GetUnusedCount", GetUnusedCount);
+			LuaStack.PushGlobalFunction(lua, "GetNodeCount", GetNodeCount);
+			LuaStack.PushGlobalFunction(lua, "GetNodeList", GetNodeList);
+			LuaStack.PushGlobalFunction(lua, "GetNode", GetNode);
 
-			LuaStack.PushFunction(lua, "HasNode", HasNode);
-			LuaStack.PushFunction(lua, "AddNode", AddNode);
-			LuaStack.PushFunction(lua, "ConnectNodes", ConnectNodes);
-			LuaStack.PushFunction(lua, "DisconnectNodes", DisconnectNodes);
-			LuaStack.PushFunction(lua, "RemoveNode", RemoveNode);
-			LuaStack.PushFunction(lua, "RemoveAllNodes", RemoveAllNodes);
+			LuaStack.PushGlobalFunction(lua, "HasNode", HasNode);
+			LuaStack.PushGlobalFunction(lua, "AddNode", AddNode);
+			LuaStack.PushGlobalFunction(lua, "IsConnectedTo", IsConnectedTo);
+			LuaStack.PushGlobalFunction(lua, "ConnectTo", ConnectTo);
+			LuaStack.PushGlobalFunction(lua, "DisconnectFrom", DisconnectFrom);
+			LuaStack.PushGlobalFunction(lua, "RemoveNode", RemoveNode);
+			LuaStack.PushGlobalFunction(lua, "ClearNodes", ClearNodes);
+			LuaStack.PushGlobalFunction(lua, "PurgeUnused", PurgeUnused);
 		}
 
 		public static Vector3 GetCoordinates(Vector3 coords)
@@ -59,9 +64,40 @@ namespace CombatNode.Mapping
 			return 1;
 		}
 
+		private static int GetUnusedCount(ILua lua)
+		{
+			lua.PushNumber(Unused.Count);
+
+			return 1;
+		}
+
 		private static int GetNodeCount(ILua lua)
 		{
 			lua.PushNumber(Nodes.Count);
+
+			return 1;
+		}
+
+		private static int GetNodeList(ILua lua)
+		{
+			int Index = 0;
+
+			lua.CreateTable();
+
+			foreach (Node Current in Nodes.Values)
+			{
+				Index++;
+
+				lua.PushNumber(Index);
+
+				lua.CreateTable();
+				lua.PushVector(Current.Position);
+				lua.SetField(-2, "Position");
+				lua.PushVector(Current.FootPos);
+				lua.SetField(-2, "FootPos");
+
+				lua.SetTable(-3);
+			}
 
 			return 1;
 		}
@@ -83,9 +119,15 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
 
 			Vector3 Coordinates = GetCoordinates(lua.GetVector(1));
-			Node NewNode = new(Coordinates, lua.GetVector(2));
 
-			lua.PushBool(Nodes.TryAdd(Coordinates, NewNode));
+			if (Nodes.ContainsKey(Coordinates)) { return 0; }
+
+			Node Entry = new(Coordinates, lua.GetVector(2));
+
+			Nodes.Add(Coordinates, Entry);
+			Unused.Add(Entry);
+
+			lua.PushBool(true);
 
 			return 1;
 		}
@@ -100,10 +142,27 @@ namespace CombatNode.Mapping
 
 			Result.PushToLua(lua);
 
-			return 1; // NOTE: I wonder what happens if we do this and we haven't pushed anything
+			return 1;
 		}
 
-		private static int ConnectNodes(ILua lua)
+		private static int IsConnectedTo(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+
+			Vector3 FromCoords = GetCoordinates(lua.GetVector(1));
+			Vector3 ToCoords = GetCoordinates(lua.GetVector(2));
+
+			if (FromCoords.Equals(ToCoords)) { return 0; }
+			if (!Nodes.TryGetValue(FromCoords, out Node From)) { return 0; }
+			if (!Nodes.TryGetValue(ToCoords, out Node To)) { return 0; }
+
+			lua.PushBool(From.Sides.ContainsKey(To));
+
+			return 1;
+		}
+
+		private static int ConnectTo(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
@@ -118,10 +177,13 @@ namespace CombatNode.Mapping
 			From.Connect(To);
 			To.Connect(From);
 
+			Unused.Remove(From);
+			Unused.Remove(To);
+
 			return 0;
 		}
 
-		private static int DisconnectNodes(ILua lua)
+		private static int DisconnectFrom(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
@@ -136,6 +198,9 @@ namespace CombatNode.Mapping
 			From.Disconnect(To);
 			To.Disconnect(From);
 
+			if (From.Sides.Count == 0) { Unused.Add(From); }
+			if (To.Sides.Count == 0) { Unused.Add(To); }
+
 			return 0;
 		}
 
@@ -148,14 +213,15 @@ namespace CombatNode.Mapping
 			if (!Nodes.TryGetValue(Coordinates, out Node Target)) { return 0; }
 
 			Target.Remove();
+			Unused.Remove(Target);
 			Nodes.Remove(Coordinates);
 
 			return 0;
 		}
 
-		private static int RemoveAllNodes(ILua lua)
+		private static int ClearNodes(ILua lua)
 		{
-			int Count = Nodes.Count;
+			lua.PushNumber(Nodes.Count);
 
 			foreach (Node Value in Nodes.Values)
 			{
@@ -163,8 +229,22 @@ namespace CombatNode.Mapping
 			}
 
 			Nodes.Clear();
+			Unused.Clear();
 
-			lua.PushNumber(Count);
+			return 1;
+		}
+
+		private static int PurgeUnused(ILua lua)
+		{
+			lua.PushNumber(Unused.Count);
+
+			foreach (Node Current in Unused)
+			{
+				Current.Remove();
+				Nodes.Remove(Current.Coordinates);
+			}
+
+			Unused.Clear();
 
 			return 1;
 		}

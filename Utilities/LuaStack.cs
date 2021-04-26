@@ -6,7 +6,7 @@ namespace CombatNode.Utilities
 {
 	public static class LuaStack
 	{
-		public static void PushFunction(ILua lua, string key, Func<ILua, int> value)
+		public static void PushGlobalFunction(ILua lua, string key, Func<ILua, int> value)
 		{
 			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
 			lua.GetField(-1, "CNode");
@@ -15,7 +15,7 @@ namespace CombatNode.Utilities
 			lua.Pop();
 		}
 
-		public static void PushVector(ILua lua, string key, Vector3 value)
+		public static void PushGlobalVector(ILua lua, string key, Vector3 value)
 		{
 			lua.PushSpecial(SPECIAL_TABLES.SPECIAL_GLOB);
 			lua.GetField(-1, "CNode");
