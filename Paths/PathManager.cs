@@ -18,18 +18,11 @@ namespace CombatNode.Paths
 			LuaStack.PushGlobalFunction(lua, "GetPath", GetPath);
 		}
 
-		private static int QueuePath(ILua lua)
+		private static bool QueuePath(Grid grid, string id, Vector3 from, Vector3 to)
 		{
-			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
-			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
-
-			string UniqueID = lua.GetString(1);
-			Vector3 FromCoords = Grid.GetCoordinates(lua.GetVector(2));
-			Vector3 ToCoords = Grid.GetCoordinates(lua.GetVector(3));
-
-			if (!Grid.Nodes.TryGetValue(FromCoords, out Node From)) { return 0; }
-			if (!Grid.Nodes.TryGetValue(ToCoords, out Node To)) { return 0; }
+			if (Results.ContainsKey(id)) { return false; }
+			if (!grid.Nodes.TryGetValue(from, out Node From)) { return false; }
+			if (!grid.Nodes.TryGetValue(to, out Node To)) { return false; }
 
 			PathFinder Finder = new();
 
@@ -37,10 +30,30 @@ namespace CombatNode.Paths
 			{
 				Stack<Node> Result = Finder.FindPath(From, To);
 
-				Results.TryAdd(UniqueID, Result);
+				Results.TryAdd(id, Result);
 			});
 
-			return 0;
+			return true;
+		}
+
+		private static int QueuePath(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+			if (!lua.IsType(2, TYPES.STRING)) { return 0; }
+			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(4, TYPES.Vector)) { return 0; }
+
+			Grid Entry = GridManager.GetGrid(lua.GetString(1));
+			
+			if (Entry == null) { return 0; }
+
+			string Identifier = lua.GetString(2);
+			Vector3 From = Entry.GetCoordinates(lua.GetVector(3));
+			Vector3 To = Entry.GetCoordinates(lua.GetVector(4));
+
+			lua.PushBool(QueuePath(Entry, Identifier, From, To));
+
+			return 1;
 		}
 
 		private static int DiscardPath(ILua lua)
@@ -57,9 +70,9 @@ namespace CombatNode.Paths
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 
-			string UniqueID = lua.GetString(1);
+			string Identifier = lua.GetString(1);
 
-			if (!Results.TryGetValue(UniqueID, out Stack<Node> Result)) { return 0; }
+			if (!Results.TryGetValue(Identifier, out Stack<Node> Result)) { return 0; }
 
 			lua.CreateTable();
 
@@ -72,7 +85,7 @@ namespace CombatNode.Paths
 				lua.Pop();
 			}
 
-			Results.Remove(UniqueID);
+			Results.Remove(Identifier);
 
 			return 1;
 		}

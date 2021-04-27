@@ -1,252 +1,174 @@
-﻿using CombatNode.Utilities;
-using GmodNET.API;
+﻿using GmodNET.API;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 
 namespace CombatNode.Mapping
 {
-	public static class Grid
+	public class Grid
 	{
-		private static readonly HashSet<Node> Unused = new();
-		public static readonly Dictionary<Vector3, Node> Nodes = new();
-		public static readonly Vector3 NodeSize = new(35, 35, 75); // Roughly the same size as a standing player
+		public readonly string Name;
+		public readonly Vector3 NodeSize;
+		public readonly HashSet<Node> Unused;
+		public readonly Dictionary<Vector3, Node> Nodes;
+		public readonly Dictionary<Vector3, Sides> Connections;
 
-		public static void Load(ILua lua)
+		public Grid(string name, Vector3 size)
 		{
-			LuaStack.PushGlobalVector(lua, "NodeSize", NodeSize);
-
-			LuaStack.PushGlobalFunction(lua, "GetCoordinates", GetCoordinates);
-			LuaStack.PushGlobalFunction(lua, "GetRoundedPos", GetRoundedPos);
-			LuaStack.PushGlobalFunction(lua, "GetUnusedCount", GetUnusedCount);
-			LuaStack.PushGlobalFunction(lua, "GetNodeCount", GetNodeCount);
-			LuaStack.PushGlobalFunction(lua, "GetNodeList", GetNodeList);
-			LuaStack.PushGlobalFunction(lua, "GetNode", GetNode);
-
-			LuaStack.PushGlobalFunction(lua, "HasNode", HasNode);
-			LuaStack.PushGlobalFunction(lua, "AddNode", AddNode);
-			LuaStack.PushGlobalFunction(lua, "IsConnectedTo", IsConnectedTo);
-			LuaStack.PushGlobalFunction(lua, "ConnectTo", ConnectTo);
-			LuaStack.PushGlobalFunction(lua, "DisconnectFrom", DisconnectFrom);
-			LuaStack.PushGlobalFunction(lua, "RemoveNode", RemoveNode);
-			LuaStack.PushGlobalFunction(lua, "ClearNodes", ClearNodes);
-			LuaStack.PushGlobalFunction(lua, "PurgeUnused", PurgeUnused);
+			Name = name;
+			NodeSize = size;
+			Unused = new();
+			Nodes = new();
+			Connections = new();
 		}
 
-		public static Vector3 GetCoordinates(Vector3 coords)
+		public Vector3 GetCoordinates(Vector3 position)
 		{
-			float X = MathF.Round(coords.X / NodeSize.X);
-			float Y = MathF.Round(coords.Y / NodeSize.Y);
-			float Z = MathF.Round(coords.Z / NodeSize.Z);
+			float X = MathF.Round(position.X / NodeSize.X);
+			float Y = MathF.Round(position.Y / NodeSize.Y);
+			float Z = MathF.Round(position.Z / NodeSize.Z);
 
 			return new Vector3(X, Y, Z);
 		}
 
-		private static int GetCoordinates(ILua lua)
+		public Vector3 RoundPosition(Vector3 position)
 		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
-
-			Vector3 Coordinates = GetCoordinates(lua.GetVector(1));
-
-			lua.PushVector(Coordinates);
-
-			return 1;
+			return GetCoordinates(position) * NodeSize;
 		}
 
-		private static int GetRoundedPos(ILua lua)
+		public float GetSideCost(Node from, Node to)
 		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
-
-			Vector3 Coordinates = GetCoordinates(lua.GetVector(1));
-
-			lua.PushVector(Coordinates * NodeSize);
-
-			return 1;
+			return (from.FootPos - to.FootPos).Length();
 		}
 
-		private static int GetUnusedCount(ILua lua)
+		public bool HasNode(Vector3 coordinates)
 		{
-			lua.PushNumber(Unused.Count);
-
-			return 1;
+			return Nodes.ContainsKey(coordinates);
 		}
 
-		private static int GetNodeCount(ILua lua)
+		public bool AddNode(Vector3 coordinates, Vector3 footPos)
 		{
-			lua.PushNumber(Nodes.Count);
+			if (Nodes.ContainsKey(coordinates)) { return false; }
 
-			return 1;
-		}
+			Node Entry = new(this, coordinates, footPos);
 
-		private static int GetNodeList(ILua lua)
-		{
-			int Index = 0;
-
-			lua.CreateTable();
-
-			foreach (Node Current in Nodes.Values)
-			{
-				Index++;
-
-				lua.PushNumber(Index);
-
-				lua.CreateTable();
-				lua.PushVector(Current.Position);
-				lua.SetField(-2, "Position");
-				lua.PushVector(Current.FootPos);
-				lua.SetField(-2, "FootPos");
-
-				lua.SetTable(-3);
-			}
-
-			return 1;
-		}
-
-		private static int HasNode(ILua lua)
-		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
-
-			Vector3 Coordinates = GetCoordinates(lua.GetVector(1));
-
-			lua.PushBool(Nodes.ContainsKey(Coordinates));
-
-			return 1;
-		}
-
-		private static int AddNode(ILua lua)
-		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
-			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
-
-			Vector3 Coordinates = GetCoordinates(lua.GetVector(1));
-
-			if (Nodes.ContainsKey(Coordinates)) { return 0; }
-
-			Node Entry = new(Coordinates, lua.GetVector(2));
-
-			Nodes.Add(Coordinates, Entry);
+			Nodes.Add(coordinates, Entry);
 			Unused.Add(Entry);
 
-			lua.PushBool(true);
-
-			return 1;
+			return true;
 		}
 
-		private static int GetNode(ILua lua)
+		public Node GetNode(Vector3 coordinates)
 		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
+			Nodes.TryGetValue(coordinates, out Node Result);
 
-			Vector3 Coordinates = GetCoordinates(lua.GetVector(1));
-
-			if (!Nodes.TryGetValue(Coordinates, out Node Result)) { return 0; }
-
-			Result.PushToLua(lua);
-
-			return 1;
+			return Result;
 		}
 
-		private static int IsConnectedTo(ILua lua)
+		public bool IsConnectedTo(Vector3 from, Vector3 to)
 		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
-			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!Connections.TryGetValue(from, out Sides List)) { return false; }
 
-			Vector3 FromCoords = GetCoordinates(lua.GetVector(1));
-			Vector3 ToCoords = GetCoordinates(lua.GetVector(2));
-
-			if (FromCoords.Equals(ToCoords)) { return 0; }
-			if (!Nodes.TryGetValue(FromCoords, out Node From)) { return 0; }
-			if (!Nodes.TryGetValue(ToCoords, out Node To)) { return 0; }
-
-			lua.PushBool(From.Sides.ContainsKey(To));
-
-			return 1;
+			return List.Contains(to);
 		}
 
-		private static int ConnectTo(ILua lua)
+		private Sides GetOrAddSides(Vector3 key)
 		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
-			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!Connections.TryGetValue(key, out Sides Result))
+			{
+				Result = new();
 
-			Vector3 FromCoords = GetCoordinates(lua.GetVector(1));
-			Vector3 ToCoords = GetCoordinates(lua.GetVector(2));
+				Connections.Add(key, Result);
+			}
 
-			if (FromCoords.Equals(ToCoords)) { return 0; }
-			if (!Nodes.TryGetValue(FromCoords, out Node From)) { return 0; }
-			if (!Nodes.TryGetValue(ToCoords, out Node To)) { return 0; }
+			return Result;
+		}
 
-			From.Connect(To);
-			To.Connect(From);
+		public bool ConnectTo(Vector3 from, Vector3 to)
+		{
+			if (!Nodes.TryGetValue(from, out Node From)) { return false; }
+			if (!Nodes.TryGetValue(to, out Node To)) { return false; }
+
+			Sides FromSides = GetOrAddSides(from);
+			Sides ToSides = GetOrAddSides(to);
+			float Cost = GetSideCost(From, To);
+
+			FromSides.Add(to, Cost);
+			ToSides.Add(from, Cost);
 
 			Unused.Remove(From);
 			Unused.Remove(To);
 
-			return 0;
+			return true;
 		}
 
-		private static int DisconnectFrom(ILua lua)
+		public bool DisconnectFrom(Vector3 from, Vector3 to)
 		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
-			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!Nodes.TryGetValue(from, out Node From)) { return false; }
+			if (!Nodes.TryGetValue(to, out Node To)) { return false; }
 
-			Vector3 FromCoords = GetCoordinates(lua.GetVector(1));
-			Vector3 ToCoords = GetCoordinates(lua.GetVector(2));
+			Sides FromSides = GetOrAddSides(from);
+			Sides ToSides = GetOrAddSides(to);
 
-			if (FromCoords.Equals(ToCoords)) { return 0; }
-			if (!Nodes.TryGetValue(FromCoords, out Node From)) { return 0; }
-			if (!Nodes.TryGetValue(ToCoords, out Node To)) { return 0; }
+			FromSides.Remove(to);
+			ToSides.Remove(from);
 
-			From.Disconnect(To);
-			To.Disconnect(From);
+			if (FromSides.Count == 0) { Unused.Add(From); }
+			if (ToSides.Count == 0) { Unused.Add(To); }
 
-			if (From.Sides.Count == 0) { Unused.Add(From); }
-			if (To.Sides.Count == 0) { Unused.Add(To); }
-
-			return 0;
+			return true;
 		}
 
-		private static int RemoveNode(ILua lua)
+		public bool RemoveNode(Vector3 coordinates)
 		{
-			if (!lua.IsType(1, TYPES.Vector)) { return 0; }
+			if (!Nodes.TryGetValue(coordinates, out Node Entry)) { return false; }
 
-			Vector3 Coordinates = GetCoordinates(lua.GetVector(1));
+			Nodes.Remove(coordinates);
+			Connections.Remove(coordinates);
+			Unused.Remove(Entry);
 
-			if (!Nodes.TryGetValue(Coordinates, out Node Target)) { return 0; }
-
-			Target.Remove();
-			Unused.Remove(Target);
-			Nodes.Remove(Coordinates);
-
-			return 0;
+			return true;
 		}
 
-		private static int ClearNodes(ILua lua)
+		public int ClearNodes()
 		{
-			lua.PushNumber(Nodes.Count);
+			int Count = Nodes.Count;
 
-			foreach (Node Value in Nodes.Values)
+			foreach (Node Current in Nodes.Values)
 			{
-				Value.Remove();
+				Connections.Remove(Current.Coordinates);
 			}
 
 			Nodes.Clear();
 			Unused.Clear();
 
-			return 1;
+			return Count;
 		}
 
-		private static int PurgeUnused(ILua lua)
+		public int PurgeUnused()
 		{
-			lua.PushNumber(Unused.Count);
+			int Count = Unused.Count;
 
 			foreach (Node Current in Unused)
 			{
-				Current.Remove();
-				Nodes.Remove(Current.Coordinates);
+				Vector3 Coordinates = Current.Coordinates;
+
+				Nodes.Remove(Coordinates);
+				Connections.Remove(Coordinates);
 			}
 
 			Unused.Clear();
 
-			return 1;
+			return Count;
+		}
+
+		public void PushToLua(ILua lua)
+		{
+			lua.CreateTable();
+			lua.PushString(Name);
+			lua.SetField(-2, "Name");
+			lua.PushVector(NodeSize);
+			lua.SetField(-2, "NodeSize");
 		}
 	}
 }

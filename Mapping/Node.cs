@@ -1,47 +1,24 @@
 ﻿using GmodNET.API;
-using System.Collections.Generic;
 using System.Numerics;
 
 namespace CombatNode.Mapping
 {
 	public class Node
 	{
+		public readonly Grid Parent;
 		public readonly Vector3 Coordinates;
 		public readonly Vector3 Position;
 		public readonly Vector3 FootPos;
-		public readonly Dictionary<Node, float> Sides;
 		public bool Crouch = false;
 		public bool Swim = false;
 		public float Depth = 0;
 
-		public Node(Vector3 coords, Vector3 footPos)
+		public Node(Grid grid, Vector3 coords, Vector3 footPos)
 		{
+			Parent = grid;
 			Coordinates = coords;
-			Position = coords * Grid.NodeSize;
+			Position = coords * grid.NodeSize;
 			FootPos = footPos;
-			Sides = new Dictionary<Node, float>();
-		}
-
-		// TODO: Store more information inside of this
-		public void Connect(Node target)
-		{
-			Sides.Remove(target);
-			Sides.Add(target, (FootPos - target.FootPos).Length());
-		}
-
-		public void Disconnect(Node target)
-		{
-			Sides.Remove(target);
-		}
-
-		public void Remove()
-		{
-			foreach (var Node in Sides.Keys)
-			{
-				Node.Disconnect(this);
-
-				Disconnect(Node); // NOTE: Would this be necessary?
-			}
 		}
 
 		public void PushToLua(ILua lua)

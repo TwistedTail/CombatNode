@@ -20,7 +20,7 @@ namespace CombatNode
 			if (is_serverside)
 			{
 				PathManager.Load(lua);
-				Grid.Load(lua);
+				GridManager.Load(lua);
 			}
 		}
 

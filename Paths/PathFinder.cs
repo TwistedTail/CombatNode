@@ -1,5 +1,6 @@
 ﻿using CombatNode.Mapping;
 using System.Collections.Generic;
+using System.Numerics;
 
 namespace CombatNode.Paths
 {
@@ -14,11 +15,11 @@ namespace CombatNode.Paths
 
 		public PathFinder()
 		{
-			CameFrom = new Dictionary<Node, Node>();
-			gScore = new Dictionary<Node, float>();
-			fScore = new Dictionary<Node, float>();
-			OpenNodes = new HashSet<Node>();
-			Result = new Stack<Node>();
+			CameFrom = new();
+			gScore = new();
+			fScore = new();
+			OpenNodes = new();
+			Result = new();
 		}
 		
 		private float GetCost(Node from)
@@ -63,6 +64,8 @@ namespace CombatNode.Paths
 		public Stack<Node> FindPath(Node start, Node end)
 		{
 			Node Current = start; // Node with the lowest f score to end
+			Grid Parent = Current.Parent;
+			Dictionary<Vector3, Sides> Connections = Parent.Connections;
 
 			End = end;
 
@@ -76,23 +79,27 @@ namespace CombatNode.Paths
 					return GetResults(Current);
 				}
 
-				float BaseCost = gScore[Current];
-
 				OpenNodes.Remove(Current);
 
-				foreach (KeyValuePair<Node, float> Entry in Current.Sides)
+				float BaseCost = gScore[Current];
+
+				if (!Connections.TryGetValue(Current.Coordinates, out Sides Result)) { continue; }
+
+				foreach (KeyValuePair<Vector3, float> Entry in Result.Connections)
 				{
+					if (!Parent.Nodes.TryGetValue(Entry.Key, out Node Side)) { continue; }
+
 					float SideCost = Entry.Value;
 					float MoveCost = BaseCost + SideCost;
 
-					if (!gScore.ContainsKey(Entry.Key))
+					if (!gScore.ContainsKey(Side))
 					{
-						UpdateSide(Entry.Key, Current, MoveCost);
+						UpdateSide(Side, Current, MoveCost);
 					}
-					else if (MoveCost < gScore[Entry.Key])
+					else if (MoveCost < gScore[Side])
 					{
-						ClearSide(Entry.Key);
-						UpdateSide(Entry.Key, Current, MoveCost);
+						ClearSide(Side);
+						UpdateSide(Side, Current, MoveCost);
 					}
 				}
 
