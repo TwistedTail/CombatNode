@@ -21,10 +21,10 @@ namespace CombatNode.Paths
 		private static bool QueuePath(Grid grid, string id, Vector3 from, Vector3 to)
 		{
 			if (Results.ContainsKey(id)) { return false; }
-			if (!grid.Nodes.TryGetValue(from, out Node From)) { return false; }
-			if (!grid.Nodes.TryGetValue(to, out Node To)) { return false; }
+			if (!grid.Nodes.TryGetValue(from.ToString(), out Node From)) { return false; }
+			if (!grid.Nodes.TryGetValue(to.ToString(), out Node To)) { return false; }
 
-			PathFinder Finder = new();
+			PathFinder Finder = new(grid);
 
 			Task.Run(() =>
 			{

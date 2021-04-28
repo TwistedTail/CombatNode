@@ -1,29 +1,33 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace CombatNode.Mapping
 {
 	public class Sides
 	{
-		public readonly Dictionary<Vector3, float> Connections;
+		[JsonProperty]
+		public readonly Dictionary<string, float> Connections;
+		[JsonIgnore]
 		public int Count => Connections.Count;
 
+		[JsonConstructor]
 		public Sides()
 		{
 			Connections = new();
 		}
 
-		public bool Add(Vector3 key, float value)
+		public bool Add(string key, float value)
 		{
 			return Connections.TryAdd(key, value);
 		}
 
-		public bool Contains(Vector3 key)
+		public bool Contains(string key)
 		{
 			return Connections.ContainsKey(key);
 		}
 
-		public bool Remove(Vector3 key)
+		public bool Remove(string key)
 		{
 			return Connections.Remove(key);
 		}

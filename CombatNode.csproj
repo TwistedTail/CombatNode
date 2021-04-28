@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="GmodNET.API" Version="0.7.0-beta.2.36687562.main" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
 </Project>

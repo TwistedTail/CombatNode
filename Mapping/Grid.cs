@@ -1,4 +1,5 @@
 ﻿using GmodNET.API;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -7,12 +8,18 @@ namespace CombatNode.Mapping
 {
 	public class Grid
 	{
+		[JsonProperty]
 		public readonly string Name;
+		[JsonProperty]
 		public readonly Vector3 NodeSize;
+		[JsonIgnore]
 		public readonly HashSet<Node> Unused;
-		public readonly Dictionary<Vector3, Node> Nodes;
-		public readonly Dictionary<Vector3, Sides> Connections;
+		[JsonProperty]
+		public readonly Dictionary<string, Node> Nodes;
+		[JsonProperty]
+		public readonly Dictionary<string, Sides> Connections;
 
+		[JsonConstructor]
 		public Grid(string name, Vector3 size)
 		{
 			Name = name;
@@ -43,16 +50,18 @@ namespace CombatNode.Mapping
 
 		public bool HasNode(Vector3 coordinates)
 		{
-			return Nodes.ContainsKey(coordinates);
+			return Nodes.ContainsKey(coordinates.ToString());
 		}
 
 		public bool AddNode(Vector3 coordinates, Vector3 footPos)
 		{
-			if (Nodes.ContainsKey(coordinates)) { return false; }
+			string Key = coordinates.ToString();
 
-			Node Entry = new(this, coordinates, footPos);
+			if (Nodes.ContainsKey(Key)) { return false; }
 
-			Nodes.Add(coordinates, Entry);
+			Node Entry = new(NodeSize, coordinates, footPos);
+
+			Nodes.Add(Key, Entry);
 			Unused.Add(Entry);
 
 			return true;
@@ -60,25 +69,27 @@ namespace CombatNode.Mapping
 
 		public Node GetNode(Vector3 coordinates)
 		{
-			Nodes.TryGetValue(coordinates, out Node Result);
+			Nodes.TryGetValue(coordinates.ToString(), out Node Result);
 
 			return Result;
 		}
 
 		public bool IsConnectedTo(Vector3 from, Vector3 to)
 		{
-			if (!Connections.TryGetValue(from, out Sides List)) { return false; }
+			if (!Connections.TryGetValue(from.ToString(), out Sides List)) { return false; }
 
-			return List.Contains(to);
+			return List.Contains(to.ToString());
 		}
 
-		private Sides GetOrAddSides(Vector3 key)
+		private Sides GetOrAddSides(Vector3 coordinates)
 		{
-			if (!Connections.TryGetValue(key, out Sides Result))
+			string Key = coordinates.ToString();
+
+			if (!Connections.TryGetValue(Key, out Sides Result))
 			{
 				Result = new();
 
-				Connections.Add(key, Result);
+				Connections.Add(Key, Result);
 			}
 
 			return Result;
@@ -86,15 +97,18 @@ namespace CombatNode.Mapping
 
 		public bool ConnectTo(Vector3 from, Vector3 to)
 		{
-			if (!Nodes.TryGetValue(from, out Node From)) { return false; }
-			if (!Nodes.TryGetValue(to, out Node To)) { return false; }
+			string FromKey = from.ToString();
+			string ToKey = to.ToString();
+
+			if (!Nodes.TryGetValue(FromKey, out Node From)) { return false; }
+			if (!Nodes.TryGetValue(ToKey, out Node To)) { return false; }
 
 			Sides FromSides = GetOrAddSides(from);
 			Sides ToSides = GetOrAddSides(to);
 			float Cost = GetSideCost(From, To);
 
-			FromSides.Add(to, Cost);
-			ToSides.Add(from, Cost);
+			FromSides.Add(ToKey, Cost);
+			ToSides.Add(FromKey, Cost);
 
 			Unused.Remove(From);
 			Unused.Remove(To);
@@ -104,14 +118,17 @@ namespace CombatNode.Mapping
 
 		public bool DisconnectFrom(Vector3 from, Vector3 to)
 		{
-			if (!Nodes.TryGetValue(from, out Node From)) { return false; }
-			if (!Nodes.TryGetValue(to, out Node To)) { return false; }
+			string FromKey = from.ToString();
+			string ToKey = to.ToString();
+
+			if (!Nodes.TryGetValue(FromKey, out Node From)) { return false; }
+			if (!Nodes.TryGetValue(ToKey, out Node To)) { return false; }
 
 			Sides FromSides = GetOrAddSides(from);
 			Sides ToSides = GetOrAddSides(to);
 
-			FromSides.Remove(to);
-			ToSides.Remove(from);
+			FromSides.Remove(ToKey);
+			ToSides.Remove(FromKey);
 
 			if (FromSides.Count == 0) { Unused.Add(From); }
 			if (ToSides.Count == 0) { Unused.Add(To); }
@@ -121,10 +138,12 @@ namespace CombatNode.Mapping
 
 		public bool RemoveNode(Vector3 coordinates)
 		{
-			if (!Nodes.TryGetValue(coordinates, out Node Entry)) { return false; }
+			string Key = coordinates.ToString();
 
-			Nodes.Remove(coordinates);
-			Connections.Remove(coordinates);
+			if (!Nodes.TryGetValue(Key, out Node Entry)) { return false; }
+
+			Nodes.Remove(Key);
+			Connections.Remove(Key);
 			Unused.Remove(Entry);
 
 			return true;
@@ -136,7 +155,7 @@ namespace CombatNode.Mapping
 
 			foreach (Node Current in Nodes.Values)
 			{
-				Connections.Remove(Current.Coordinates);
+				Connections.Remove(Current.Coordinates.ToString());
 			}
 
 			Nodes.Clear();
@@ -151,10 +170,10 @@ namespace CombatNode.Mapping
 
 			foreach (Node Current in Unused)
 			{
-				Vector3 Coordinates = Current.Coordinates;
+				string Key = Current.Coordinates.ToString();
 
-				Nodes.Remove(Coordinates);
-				Connections.Remove(Coordinates);
+				Nodes.Remove(Key);
+				Connections.Remove(Key);
 			}
 
 			Unused.Clear();

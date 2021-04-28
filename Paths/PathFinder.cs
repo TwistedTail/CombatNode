@@ -11,15 +11,17 @@ namespace CombatNode.Paths
 		private readonly Dictionary<Node, float> fScore;
 		private readonly HashSet<Node> OpenNodes;
 		private readonly Stack<Node> Result;
+		private readonly Grid Map;
 		private Node End;
 
-		public PathFinder()
+		public PathFinder(Grid grid)
 		{
 			CameFrom = new();
 			gScore = new();
 			fScore = new();
 			OpenNodes = new();
 			Result = new();
+			Map = grid;
 		}
 		
 		private float GetCost(Node from)
@@ -64,8 +66,7 @@ namespace CombatNode.Paths
 		public Stack<Node> FindPath(Node start, Node end)
 		{
 			Node Current = start; // Node with the lowest f score to end
-			Grid Parent = Current.Parent;
-			Dictionary<Vector3, Sides> Connections = Parent.Connections;
+			Dictionary<string, Sides> Connections = Map.Connections;
 
 			End = end;
 
@@ -83,11 +84,11 @@ namespace CombatNode.Paths
 
 				float BaseCost = gScore[Current];
 
-				if (!Connections.TryGetValue(Current.Coordinates, out Sides Result)) { continue; }
+				if (!Connections.TryGetValue(Current.Coordinates.ToString(), out Sides Result)) { continue; }
 
-				foreach (KeyValuePair<Vector3, float> Entry in Result.Connections)
+				foreach (KeyValuePair<string, float> Entry in Result.Connections)
 				{
-					if (!Parent.Nodes.TryGetValue(Entry.Key, out Node Side)) { continue; }
+					if (!Map.Nodes.TryGetValue(Entry.Key, out Node Side)) { continue; }
 
 					float SideCost = Entry.Value;
 					float MoveCost = BaseCost + SideCost;

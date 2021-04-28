@@ -1,23 +1,23 @@
 ﻿using GmodNET.API;
+using Newtonsoft.Json;
 using System.Numerics;
 
 namespace CombatNode.Mapping
 {
 	public class Node
 	{
-		public readonly Grid Parent;
+		[JsonProperty]
 		public readonly Vector3 Coordinates;
+		[JsonProperty]
 		public readonly Vector3 Position;
+		[JsonProperty]
 		public readonly Vector3 FootPos;
-		public bool Crouch = false;
-		public bool Swim = false;
-		public float Depth = 0;
 
-		public Node(Grid grid, Vector3 coords, Vector3 footPos)
+		[JsonConstructor]
+		public Node(Vector3 size, Vector3 coords, Vector3 footPos)
 		{
-			Parent = grid;
 			Coordinates = coords;
-			Position = coords * grid.NodeSize;
+			Position = coords * size;
 			FootPos = footPos;
 		}
 
@@ -30,26 +30,6 @@ namespace CombatNode.Mapping
 			lua.SetField(-2, "Position");
 			lua.PushVector(FootPos);
 			lua.SetField(-2, "FootPos");
-
-			if (Swim)
-			{
-				lua.PushBool(true);
-				lua.SetField(-2, "Swim");
-			}
-			else
-			{
-				if (Crouch)
-				{
-					lua.PushBool(true);
-					lua.SetField(-2, "Crouch");
-				}
-					
-				if (Depth > 0)
-				{
-					lua.PushNumber(Depth);
-					lua.SetField(-2, "Depth");
-				}
-			}
 		}
 	}
 }

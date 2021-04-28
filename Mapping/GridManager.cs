@@ -1,5 +1,6 @@
 ﻿using CombatNode.Utilities;
 using GmodNET.API;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -16,6 +17,8 @@ namespace CombatNode.Mapping
 			LuaStack.PushGlobalFunction(lua, "HasGrid", HasGrid);
 			LuaStack.PushGlobalFunction(lua, "GetGrid", GetGrid);
 			LuaStack.PushGlobalFunction(lua, "RemoveGrid", RemoveGrid);
+			LuaStack.PushGlobalFunction(lua, "SerializeGrid", SerializeGrid);
+			LuaStack.PushGlobalFunction(lua, "DeserializeGrid", DeserializeGrid);
 
 			// Grid-related functions
 			LuaStack.PushGlobalFunction(lua, "GetNodeSize", GetNodeSize);
@@ -90,6 +93,36 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 
 			lua.PushBool(Grids.Remove(lua.GetString(1)));
+
+			return 1;
+		}
+
+		private static int SerializeGrid(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+
+			lua.PushString(JsonConvert.SerializeObject(Entry, Formatting.Indented));
+
+			return 1;
+		}
+
+		private static int DeserializeGrid(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+
+			Grid New = JsonConvert.DeserializeObject<Grid>(lua.GetString(1));
+			bool Success = New != null;
+
+			if (Success)
+			{
+				string Name = New.Name;
+
+				Grids.Remove(Name);
+				Grids.TryAdd(Name, New);
+			}
+
+			lua.PushBool(Success);
 
 			return 1;
 		}
