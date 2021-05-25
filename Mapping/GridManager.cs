@@ -111,11 +111,13 @@ namespace CombatNode.Mapping
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 
-			Grid New = JsonConvert.DeserializeObject<Grid>(lua.GetString(1));
-			bool Success = New != null;
+			string Json = lua.GetString(1);
+			Grid? Result = JsonConvert.DeserializeObject<Grid>(Json);
+			bool Success = Result.HasValue;
 
-			if (Success)
+			if (Result.HasValue)
 			{
+				Grid New = Result.Value;
 				string Name = New.Name;
 
 				Grids.Remove(Name);
@@ -198,11 +200,7 @@ namespace CombatNode.Mapping
 
 				lua.PushNumber(Index);
 
-				lua.CreateTable();
-				lua.PushVector(Current.Position);
-				lua.SetField(-2, "Position");
-				lua.PushVector(Current.FootPos);
-				lua.SetField(-2, "FootPos");
+				Current.PushToLua(lua);
 
 				lua.SetTable(-3);
 			}

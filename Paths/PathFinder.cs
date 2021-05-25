@@ -7,8 +7,8 @@ namespace CombatNode.Paths
 	public class PathFinder
 	{
 		private readonly Dictionary<Node, Node> CameFrom;
-		private readonly Dictionary<Node, float> gScore;
-		private readonly Dictionary<Node, float> fScore;
+		private readonly Dictionary<Node, int> gScore;
+		private readonly Dictionary<Node, int> fScore;
 		private readonly HashSet<Node> OpenNodes;
 		private readonly Stack<Node> Result;
 		private readonly Grid Map;
@@ -24,9 +24,9 @@ namespace CombatNode.Paths
 			Map = grid;
 		}
 		
-		private float GetCost(Node from)
+		private int GetCost(Node from)
 		{
-			return (from.FootPos - End.FootPos).Length();
+			return (int)(from.FootPos - End.FootPos).Length();
 		}
 
 		private void ClearSide(Node side)
@@ -36,7 +36,7 @@ namespace CombatNode.Paths
 			fScore.Remove(side);
 		}
 
-		private void UpdateSide(Node side, Node current, float cost)
+		private void UpdateSide(Node side, Node current, int cost)
 		{
 			CameFrom.Add(side, current);
 			gScore.Add(side, cost);
@@ -48,16 +48,25 @@ namespace CombatNode.Paths
 			}
 		}
 
-		// TODO: Reduce the amount of Nodes by comparing their direction
 		private Stack<Node> GetResults(Node last)
 		{
-			Result.Push(last);
-			CameFrom.TryGetValue(last, out Node Previous);
+			Vector3 Direction = new();
+			Node Previous = last;
 
-			while (Previous != null)
+			Result.Push(last);
+
+			while (CameFrom.TryGetValue(Previous, out Node Current))
 			{
-				Result.Push(Previous);
-				CameFrom.TryGetValue(Previous, out Previous);
+				Vector3 Normal = Vector3.Normalize(Previous.FootPos - Current.FootPos);
+
+				if (Direction != Normal)
+				{
+					Result.Push(Current);
+
+					Direction = Normal;
+				}
+
+				Previous = Current;
 			}
 
 			return Result;
@@ -66,12 +75,11 @@ namespace CombatNode.Paths
 		public Stack<Node> FindPath(Node start, Node end)
 		{
 			Node Current = start; // Node with the lowest f score to end
-			Dictionary<string, Sides> Connections = Map.Connections;
 
 			End = end;
 
 			fScore.Add(start, GetCost(start));
-			gScore.Add(start, 0f);
+			gScore.Add(start, 0);
 			OpenNodes.Add(start);
 
 			while (OpenNodes.Count > 0)
@@ -82,16 +90,14 @@ namespace CombatNode.Paths
 
 				OpenNodes.Remove(Current);
 
-				float BaseCost = gScore[Current];
+				int BaseCost = gScore[Current];
 
-				if (!Connections.TryGetValue(Current.Coordinates.ToString(), out Sides Result)) { continue; }
-
-				foreach (KeyValuePair<string, float> Entry in Result.Connections)
+				foreach (KeyValuePair<string, ushort> Entry in Current.Sides)
 				{
 					if (!Map.Nodes.TryGetValue(Entry.Key, out Node Side)) { continue; }
 
-					float SideCost = Entry.Value;
-					float MoveCost = BaseCost + SideCost;
+					int SideCost = Entry.Value;
+					int MoveCost = BaseCost + SideCost;
 
 					if (!gScore.ContainsKey(Side))
 					{
@@ -105,11 +111,11 @@ namespace CombatNode.Paths
 				}
 
 				// NOTE: This is terrible and not optimal
-				float Lowest = float.MaxValue;
+				int Lowest = int.MaxValue;
 
 				foreach (Node open in OpenNodes)
 				{
-					float Cost = fScore[open];
+					int Cost = fScore[open];
 
 					if (Cost < Lowest)
 					{

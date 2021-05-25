@@ -21,8 +21,8 @@ namespace CombatNode.Paths
 		private static bool QueuePath(Grid grid, string id, Vector3 from, Vector3 to)
 		{
 			if (Results.ContainsKey(id)) { return false; }
-			if (!grid.Nodes.TryGetValue(from.ToString(), out Node From)) { return false; }
-			if (!grid.Nodes.TryGetValue(to.ToString(), out Node To)) { return false; }
+			if (!grid.Nodes.TryGetValue(Node.GetKey(from), out Node From)) { return false; }
+			if (!grid.Nodes.TryGetValue(Node.GetKey(to), out Node To)) { return false; }
 
 			PathFinder Finder = new(grid);
 
@@ -43,10 +43,11 @@ namespace CombatNode.Paths
 			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(4, TYPES.Vector)) { return 0; }
 
-			Grid Entry = GridManager.GetGrid(lua.GetString(1));
-			
-			if (Entry == null) { return 0; }
+			string GridName = lua.GetString(1);
 
+			if (!GridManager.HasGrid(GridName)) { return 0; }
+
+			Grid Entry = GridManager.GetGrid(GridName);
 			string Identifier = lua.GetString(2);
 			Vector3 From = Entry.GetCoordinates(lua.GetVector(3));
 			Vector3 To = Entry.GetCoordinates(lua.GetVector(4));
