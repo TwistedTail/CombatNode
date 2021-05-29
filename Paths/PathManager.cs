@@ -1,4 +1,4 @@
-﻿using CombatNode.Mapping;
+using CombatNode.Mapping;
 using CombatNode.Utilities;
 using GmodNET.API;
 using System.Collections.Generic;
@@ -14,8 +14,25 @@ namespace CombatNode.Paths
 		public static void Load(ILua lua)
 		{
 			LuaStack.PushGlobalFunction(lua, "QueuePath", QueuePath);
-			LuaStack.PushGlobalFunction(lua, "DiscardPath", DiscardPath);
-			LuaStack.PushGlobalFunction(lua, "GetPath", GetPath);
+			LuaStack.PushGlobalFunction(lua, "GetPaths", GetPaths);
+		}
+
+		private static void StackToLua(ILua lua, Stack<Node> result)
+		{
+			lua.CreateTable();
+
+			int Index = 0;
+
+			foreach (Node Entry in result)
+			{
+				Index++;
+
+				lua.PushNumber(Index);
+				lua.PushVector(Entry.FootPos);
+				lua.SetTable(-3);
+			}
+
+			result.Clear();
 		}
 
 		private static bool QueuePath(Grid grid, string id, Vector3 from, Vector3 to)
@@ -57,36 +74,22 @@ namespace CombatNode.Paths
 			return 1;
 		}
 
-		private static int DiscardPath(ILua lua)
+		private static int GetPaths(ILua lua)
 		{
-			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-
-			Results.Remove(lua.GetString(1));
-
-			return 0;
-		}
-
-		// TODO: Test this thing
-		private static int GetPath(ILua lua)
-		{
-			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-
-			string Identifier = lua.GetString(1);
-
-			if (!Results.TryGetValue(Identifier, out Stack<Node> Result)) { return 0; }
+			if (Results.Count == 0) { return 0; }
 
 			lua.CreateTable();
 
-			while (Result.Count > 0)
+			foreach (var Entry in Results)
 			{
-				Node Current = Result.Pop();
+				lua.PushString(Entry.Key);
 
-				Current.PushToLua(lua);
+				StackToLua(lua, Entry.Value);
 
-				lua.Pop();
+				lua.SetTable(-3);
 			}
 
-			Results.Remove(Identifier);
+			Results.Clear();
 
 			return 1;
 		}
