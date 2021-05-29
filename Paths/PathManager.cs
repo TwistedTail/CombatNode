@@ -1,4 +1,4 @@
-using CombatNode.Mapping;
+﻿using CombatNode.Mapping;
 using CombatNode.Utilities;
 using GmodNET.API;
 using System.Collections.Generic;
@@ -41,11 +41,11 @@ namespace CombatNode.Paths
 			if (!grid.Nodes.TryGetValue(Node.GetKey(from), out Node From)) { return false; }
 			if (!grid.Nodes.TryGetValue(Node.GetKey(to), out Node To)) { return false; }
 
-			PathFinder Finder = new(grid);
+			PathFinder Finder = new(grid, From, To);
 
 			Task.Run(() =>
 			{
-				Stack<Node> Result = Finder.FindPath(From, To);
+				Stack<Node> Result = Finder.FindPath();
 
 				Results.TryAdd(id, Result);
 			});
@@ -64,8 +64,8 @@ namespace CombatNode.Paths
 
 			if (!GridManager.HasGrid(GridName)) { return 0; }
 
-			Grid Entry = GridManager.GetGrid(GridName);
 			string Identifier = lua.GetString(2);
+			Grid Entry = GridManager.GetGrid(GridName);
 			Vector3 From = Entry.GetCoordinates(lua.GetVector(3));
 			Vector3 To = Entry.GetCoordinates(lua.GetVector(4));
 

@@ -12,7 +12,7 @@ namespace CombatNode.Mapping
 		[JsonProperty]
 		public readonly Vector3 FootPos;
 		[JsonProperty]
-		public readonly Dictionary<string, ushort> Sides;
+		public readonly Dictionary<string, float> Sides;
 
 		[JsonConstructor]
 		public Node(Vector3 coords, Vector3 footPos)
@@ -32,9 +32,9 @@ namespace CombatNode.Mapping
 			return $"{Coordinates.X} {Coordinates.Y} {Coordinates.Z}";
 		}
 
-		public ushort GetDistance(Node target)
+		public float GetDistance(Node target)
 		{
-			return (ushort)(FootPos - target.FootPos).Length();
+			return (FootPos - target.FootPos).Length();
 		}
 
 		public bool ConnectTo(Node target)

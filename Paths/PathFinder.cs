@@ -4,53 +4,35 @@ using System.Numerics;
 
 namespace CombatNode.Paths
 {
-	public class PathFinder
+	public struct PathFinder
 	{
 		private readonly Dictionary<Node, Node> CameFrom;
-		private readonly Dictionary<Node, int> gScore;
-		private readonly Dictionary<Node, int> fScore;
-		private readonly HashSet<Node> OpenNodes;
+		private readonly Dictionary<Node, float> gScore;
+		private readonly Dictionary<string, Node> Nodes;
+		private readonly PriorityQueue Queue;
 		private readonly Stack<Node> Result;
-		private readonly Grid Map;
-		private Node End;
+		private readonly Node End;
 
-		public PathFinder(Grid grid)
+		public PathFinder(Grid grid, Node start, Node end)
 		{
 			CameFrom = new();
 			gScore = new();
-			fScore = new();
-			OpenNodes = new();
+			Nodes = grid.Nodes;
+			Queue = new(start);
 			Result = new();
-			Map = grid;
+			End = end;
+
+			gScore.Add(start, 0f);
 		}
 		
-		private int GetCost(Node from)
+		private float Heuristic(Node from)
 		{
-			return (int)(from.FootPos - End.FootPos).Length();
-		}
-
-		private void ClearSide(Node side)
-		{
-			CameFrom.Remove(side);
-			gScore.Remove(side);
-			fScore.Remove(side);
-		}
-
-		private void UpdateSide(Node side, Node current, int cost)
-		{
-			CameFrom.Add(side, current);
-			gScore.Add(side, cost);
-			fScore.Add(side, cost + GetCost(side));
-
-			if (!OpenNodes.Contains(side))
-			{
-				OpenNodes.Add(side);
-			}
+			return (from.FootPos - End.FootPos).Length();
 		}
 
 		private Stack<Node> GetResults(Node last)
 		{
-			Vector3 Direction = new();
+			Vector3 Direction = Vector3.Zero;
 			Node Previous = last;
 
 			Result.Push(last);
@@ -72,55 +54,37 @@ namespace CombatNode.Paths
 			return Result;
 		}
 
-		public Stack<Node> FindPath(Node start, Node end)
+		public Stack<Node> FindPath()
 		{
-			Node Current = start; // Node with the lowest f score to end
-
-			End = end;
-
-			fScore.Add(start, GetCost(start));
-			gScore.Add(start, 0);
-			OpenNodes.Add(start);
-
-			while (OpenNodes.Count > 0)
+			while (Queue.Count > 0)
 			{
-				if (Current.Equals(end)) {
+				Node Current = Queue.Dequeue(); // Node with the lowest f score to end
+
+				if (Current.Equals(End))
+				{
 					return GetResults(Current);
 				}
 
-				OpenNodes.Remove(Current);
+				float BaseCost = gScore[Current];
 
-				int BaseCost = gScore[Current];
-
-				foreach (KeyValuePair<string, ushort> Entry in Current.Sides)
+				foreach (var Entry in Current.Sides)
 				{
-					if (!Map.Nodes.TryGetValue(Entry.Key, out Node Side)) { continue; }
+					Node Side = Nodes[Entry.Key];
+					float MoveCost = BaseCost + Entry.Value;
+					bool Exists = gScore.ContainsKey(Side);
 
-					int SideCost = Entry.Value;
-					int MoveCost = BaseCost + SideCost;
-
-					if (!gScore.ContainsKey(Side))
+					if (!Exists || MoveCost < gScore[Side])
 					{
-						UpdateSide(Side, Current, MoveCost);
-					}
-					else if (MoveCost < gScore[Side])
-					{
-						ClearSide(Side);
-						UpdateSide(Side, Current, MoveCost);
-					}
-				}
+						if (Exists)
+						{
+							gScore.Remove(Side);
+							CameFrom.Remove(Side);
+						}
 
-				// NOTE: This is terrible and not optimal
-				int Lowest = int.MaxValue;
+						gScore.Add(Side, MoveCost);
+						CameFrom.Add(Side, Current);
 
-				foreach (Node open in OpenNodes)
-				{
-					int Cost = fScore[open];
-
-					if (Cost < Lowest)
-					{
-						Current = open;
-						Lowest = Cost;
+						Queue.Enqueue(Side, MoveCost + Heuristic(Side));
 					}
 				}
 			}
