@@ -1,46 +1,44 @@
 ﻿using CombatNode.Mapping;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CombatNode.Paths
 {
 	public struct PriorityQueue
 	{
-		private readonly List<KeyValuePair<Node, float>> Nodes;
+		private readonly Dictionary<Node, float> Nodes;
 		public readonly int Count => Nodes.Count;
 
 		public PriorityQueue(Node initial)
 		{
 			Nodes = new() {
-				new KeyValuePair<Node, float>(initial, 0f)
+				{ initial, 0f }
 			};
 		}
 
 		public void Enqueue(Node node, float cost)
 		{
-			Nodes.Add(new KeyValuePair<Node, float>(node, cost));
+			Nodes.Remove(node);
+			Nodes.Add(node, cost);
 		}
 
 		// TODO: This class needs to be a binary heap, so we can optimize this turd down here.
 		public Node Dequeue()
 		{
-			int Index = 0;
-			var First = Nodes[0];
+			var First = Nodes.First();
 			Node Result = First.Key;
 			float Lowest = First.Value;
 
-			for (int I = 1; I < Nodes.Count; I++)
+			foreach (var Entry in Nodes)
 			{
-				var Entry = Nodes[I];
-
 				if (Entry.Value < Lowest)
 				{
-					Index = I;
 					Result = Entry.Key;
 					Lowest = Entry.Value;
 				}
 			}
 
-			Nodes.RemoveAt(Index);
+			Nodes.Remove(Result);
 
 			return Result;
 		}
