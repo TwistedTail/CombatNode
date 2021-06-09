@@ -12,13 +12,16 @@ namespace CombatNode.Mapping
 		[JsonProperty]
 		public readonly Vector3 FootPos;
 		[JsonProperty]
+		public readonly float CostMult;
+		[JsonProperty]
 		public readonly Dictionary<string, float> Sides;
 
 		[JsonConstructor]
-		public Node(Vector3 coords, Vector3 footPos)
+		public Node(Vector3 coords, Vector3 footPos, float mult)
 		{
 			Coordinates = coords;
 			FootPos = footPos;
+			CostMult = mult;
 			Sides = new();
 		}
 
@@ -32,14 +35,14 @@ namespace CombatNode.Mapping
 			return $"{Coordinates.X} {Coordinates.Y} {Coordinates.Z}";
 		}
 
-		public float GetDistance(Node target)
+		public float GetSideCost(Node target)
 		{
-			return (FootPos - target.FootPos).Length();
+			return (FootPos - target.FootPos).Length() * target.CostMult;
 		}
 
-		public bool ConnectTo(Node target)
+		public bool ConnectTo(Node target, float sideMult)
 		{
-			return Sides.TryAdd(target.GetKey(), GetDistance(target));
+			return Sides.TryAdd(target.GetKey(), GetSideCost(target) * sideMult);
 		}
 
 		public bool DisconnectFrom(Node target)

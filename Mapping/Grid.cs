@@ -45,13 +45,13 @@ namespace CombatNode.Mapping
 			return Nodes.ContainsKey(Node.GetKey(coordinates));
 		}
 
-		public bool AddNode(Vector3 coordinates, Vector3 footPos)
+		public bool AddNode(Vector3 coordinates, Vector3 footPos, float cost)
 		{
 			string Key = Node.GetKey(coordinates);
 
 			if (Nodes.ContainsKey(Key)) { return false; }
 
-			Node Entry = new(coordinates, footPos);
+			Node Entry = new(coordinates, footPos, cost);
 
 			Nodes.Add(Key, Entry);
 			Unused.Add(Entry);
@@ -75,7 +75,7 @@ namespace CombatNode.Mapping
 			return From.Sides.ContainsKey(Node.GetKey(to));
 		}
 
-		public bool ConnectTo(Vector3 from, Vector3 to)
+		public bool ConnectTo(Vector3 from, Vector3 to, float cost)
 		{
 			string FromKey = Node.GetKey(from);
 			string ToKey = Node.GetKey(to);
@@ -83,8 +83,7 @@ namespace CombatNode.Mapping
 			if (!Nodes.TryGetValue(FromKey, out Node From)) { return false; }
 			if (!Nodes.TryGetValue(ToKey, out Node To)) { return false; }
 
-			From.ConnectTo(To);
-			To.ConnectTo(From);
+			From.ConnectTo(To, cost);
 
 			Unused.Remove(From);
 			Unused.Remove(To);

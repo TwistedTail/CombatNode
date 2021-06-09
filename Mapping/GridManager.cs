@@ -226,11 +226,13 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(4, TYPES.NUMBER)) { return 0; }
 			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
 
 			Vector3 Coordinates = Entry.GetCoordinates(lua.GetVector(2));
+			float Cost = (float)lua.GetNumber(4);
 
-			lua.PushBool(Entry.AddNode(Coordinates, lua.GetVector(3)));
+			lua.PushBool(Entry.AddNode(Coordinates, lua.GetVector(3), Cost));
 
 			return 1;
 		}
@@ -272,12 +274,14 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(4, TYPES.NUMBER)) { return 0; }
 			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
 
 			Vector3 From = Entry.GetCoordinates(lua.GetVector(2));
 			Vector3 To = Entry.GetCoordinates(lua.GetVector(3));
+			float Cost = (float)lua.GetNumber(4);
 
-			lua.PushBool(Entry.ConnectTo(From, To));
+			lua.PushBool(Entry.ConnectTo(From, To, Cost));
 
 			return 1;
 		}
