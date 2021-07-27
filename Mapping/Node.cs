@@ -15,6 +15,8 @@ namespace CombatNode.Mapping
 		public readonly float CostMult;
 		[JsonProperty]
 		public readonly Dictionary<string, float> Sides;
+		[JsonIgnore]
+		public bool Locked;
 
 		[JsonConstructor]
 		public Node(Vector3 coords, Vector3 footPos, float mult)
@@ -23,6 +25,7 @@ namespace CombatNode.Mapping
 			FootPos = footPos;
 			CostMult = mult;
 			Sides = new();
+			Locked = false;
 		}
 
 		public static string GetKey(Vector3 coordinates)
@@ -66,6 +69,7 @@ namespace CombatNode.Mapping
 			Sides.Clear();
 
 			grid.Nodes.Remove(Key);
+			grid.Locked.Remove(Key);
 			grid.Unused.Remove(this);
 
 			return true;

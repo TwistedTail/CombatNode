@@ -11,15 +11,17 @@ namespace CombatNode.Paths
 		private readonly Dictionary<string, Node> Nodes;
 		private readonly PriorityQueue Queue;
 		private readonly Stack<Node> Result;
+		private readonly bool UseLocked;
 		private readonly Node End;
-
-		public PathFinder(Grid grid, Node start, Node end)
+		
+		public PathFinder(Grid grid, Node start, Node end, bool useLocked)
 		{
 			CameFrom = new();
 			gScore = new();
 			Nodes = grid.Nodes;
 			Queue = new(start);
 			Result = new();
+			UseLocked = useLocked;
 			End = end;
 
 			gScore.Add(start, 0f);
@@ -54,6 +56,35 @@ namespace CombatNode.Paths
 			return Result;
 		}
 
+		private void CheckSides(Node current)
+		{
+			float BaseCost = gScore[current];
+
+			foreach (var Entry in current.Sides)
+			{
+				Node Side = Nodes[Entry.Key];
+
+				if (!UseLocked & !Side.Equals(End) & Side.Locked) { continue; }
+
+				float MoveCost = BaseCost + Entry.Value;
+				bool Exists = gScore.ContainsKey(Side);
+
+				if (!Exists | MoveCost < gScore[Side])
+				{
+					if (Exists)
+					{
+						gScore.Remove(Side);
+						CameFrom.Remove(Side);
+					}
+
+					gScore.Add(Side, MoveCost);
+					CameFrom.Add(Side, current);
+
+					Queue.Enqueue(Side, MoveCost + Heuristic(Side));
+				}
+			}
+		}
+
 		public Stack<Node> FindPath()
 		{
 			while (Queue.Count > 0)
@@ -65,28 +96,7 @@ namespace CombatNode.Paths
 					return GetResults(Current);
 				}
 
-				float BaseCost = gScore[Current];
-
-				foreach (var Entry in Current.Sides)
-				{
-					Node Side = Nodes[Entry.Key];
-					float MoveCost = BaseCost + Entry.Value;
-					bool Exists = gScore.ContainsKey(Side);
-
-					if (!Exists || MoveCost < gScore[Side])
-					{
-						if (Exists)
-						{
-							gScore.Remove(Side);
-							CameFrom.Remove(Side);
-						}
-
-						gScore.Add(Side, MoveCost);
-						CameFrom.Add(Side, Current);
-
-						Queue.Enqueue(Side, MoveCost + Heuristic(Side));
-					}
-				}
+				CheckSides(Current);
 			}
 
 			return Result; //NOTE: Maybe use GetResults here anyway?

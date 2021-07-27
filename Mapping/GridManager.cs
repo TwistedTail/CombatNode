@@ -27,11 +27,15 @@ namespace CombatNode.Mapping
 			LuaStack.PushGlobalFunction(lua, "GetUnusedCount", GetUnusedCount);
 			LuaStack.PushGlobalFunction(lua, "GetNodeCount", GetNodeCount);
 			LuaStack.PushGlobalFunction(lua, "GetNodeList", GetNodeList);
+			LuaStack.PushGlobalFunction(lua, "GetNodesInSphere", GetNodesInSphere);
+			LuaStack.PushGlobalFunction(lua, "GetConnectedNodesInRadius", GetConnectedNodesInRadius);
 
 			// Node functions
 			LuaStack.PushGlobalFunction(lua, "HasNode", HasNode);
 			LuaStack.PushGlobalFunction(lua, "AddNode", AddNode);
 			LuaStack.PushGlobalFunction(lua, "GetNode", GetNode);
+			LuaStack.PushGlobalFunction(lua, "LockNode", LockNode);
+			LuaStack.PushGlobalFunction(lua, "UnlockNode", UnlockNode);
 			LuaStack.PushGlobalFunction(lua, "IsConnectedTo", IsConnectedTo);
 			LuaStack.PushGlobalFunction(lua, "ConnectTo", ConnectTo);
 			LuaStack.PushGlobalFunction(lua, "DisconnectFrom", DisconnectFrom);
@@ -81,9 +85,9 @@ namespace CombatNode.Mapping
 		private static int GetGrid(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Entry.PushToLua(lua);
+			Map.PushToLua(lua);
 
 			return 1;
 		}
@@ -100,9 +104,9 @@ namespace CombatNode.Mapping
 		private static int SerializeGrid(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			lua.PushString(JsonConvert.SerializeObject(Entry, Formatting.Indented));
+			lua.PushString(JsonConvert.SerializeObject(Map, Formatting.Indented));
 
 			return 1;
 		}
@@ -113,7 +117,6 @@ namespace CombatNode.Mapping
 
 			string Json = lua.GetString(1);
 			Grid? Result = JsonConvert.DeserializeObject<Grid>(Json);
-			bool Success = Result.HasValue;
 
 			if (Result.HasValue)
 			{
@@ -124,7 +127,7 @@ namespace CombatNode.Mapping
 				Grids.TryAdd(Name, New);
 			}
 
-			lua.PushBool(Success);
+			lua.PushBool(Result.HasValue);
 
 			return 1;
 		}
@@ -132,9 +135,66 @@ namespace CombatNode.Mapping
 		private static int GetNodeSize(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			lua.PushVector(Entry.NodeSize);
+			lua.PushVector(Map.NodeSize);
+
+			return 1;
+		}
+
+		private static int GetNodesInSphere(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(3, TYPES.NUMBER)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
+
+			Vector3 Center = Map.RoundPosition(lua.GetVector(2));
+			float Radius = (float)lua.GetNumber(3);
+			Node[] Nodes = Map.GetNodesInSphere(Center, Radius);
+			int Index = 0;
+
+			lua.CreateTable();
+
+			foreach (Node Current in Nodes)
+			{
+				Index++;
+
+				lua.PushNumber(Index);
+
+				Current.PushToLua(lua);
+
+				lua.SetTable(-3);
+			}
+
+			return 1;
+		}
+
+		private static int GetConnectedNodesInRadius(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(3, TYPES.NUMBER)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
+
+			Vector3 Center = lua.GetVector(2);
+			float Radius = (float)lua.GetNumber(3);
+			bool UseLocked = lua.IsType(4, TYPES.BOOL) ? lua.GetBool(4) : true;
+			Node[] Nodes = Map.GetConnectedNodesInRadius(Center, Radius, UseLocked);
+			int Index = 0;
+
+			lua.CreateTable();
+
+			foreach (Node Current in Nodes)
+			{
+				Index++;
+
+				lua.PushNumber(Index);
+
+				Current.PushToLua(lua);
+
+				lua.SetTable(-3);
+			}
 
 			return 1;
 		}
@@ -143,9 +203,9 @@ namespace CombatNode.Mapping
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 Coordinates = Entry.GetCoordinates(lua.GetVector(2));
+			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
 
 			lua.PushVector(Coordinates);
 
@@ -156,9 +216,9 @@ namespace CombatNode.Mapping
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 Position = Entry.RoundPosition(lua.GetVector(2));
+			Vector3 Position = Map.RoundPosition(lua.GetVector(2));
 
 			lua.PushVector(Position);
 
@@ -168,9 +228,9 @@ namespace CombatNode.Mapping
 		private static int GetUnusedCount(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			lua.PushNumber(Entry.Unused.Count);
+			lua.PushNumber(Map.Unused.Count);
 
 			return 1;
 		}
@@ -178,9 +238,9 @@ namespace CombatNode.Mapping
 		private static int GetNodeCount(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			lua.PushNumber(Entry.Nodes.Count);
+			lua.PushNumber(Map.Nodes.Count);
 
 			return 1;
 		}
@@ -188,13 +248,13 @@ namespace CombatNode.Mapping
 		private static int GetNodeList(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
 			int Index = 0;
 
 			lua.CreateTable();
 
-			foreach (Node Current in Entry.Nodes.Values)
+			foreach (Node Current in Map.Nodes.Values)
 			{
 				Index++;
 
@@ -212,11 +272,11 @@ namespace CombatNode.Mapping
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 Coordinates = Entry.GetCoordinates(lua.GetVector(2));
+			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
 
-			lua.PushBool(Entry.HasNode(Coordinates));
+			lua.PushBool(Map.HasNode(Coordinates));
 
 			return 1;
 		}
@@ -227,12 +287,12 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(4, TYPES.NUMBER)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 Coordinates = Entry.GetCoordinates(lua.GetVector(2));
+			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
 			float Cost = (float)lua.GetNumber(4);
 
-			lua.PushBool(Entry.AddNode(Coordinates, lua.GetVector(3), Cost));
+			lua.PushBool(Map.AddNode(Coordinates, lua.GetVector(3), Cost));
 
 			return 1;
 		}
@@ -241,17 +301,45 @@ namespace CombatNode.Mapping
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 Coordinates = Entry.GetCoordinates(lua.GetVector(2));
+			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
 
-			if (!Entry.HasNode(Coordinates)) { return 0; }
+			if (!Map.HasNode(Coordinates)) { return 0; }
 
-			Node Result = Entry.GetNode(Coordinates);
+			Node Result = Map.GetNode(Coordinates);
 
 			Result.PushToLua(lua);
 
 			return 1;
+		}
+
+		private static int LockNode(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
+
+			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
+			string Key = Node.GetKey(Coordinates);
+
+			lua.PushBool(Map.LockNode(Key));
+
+			return 0;
+		}
+
+		private static int UnlockNode(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
+
+			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
+			string Key = Node.GetKey(Coordinates);
+
+			lua.PushBool(Map.LockNode(Key));
+
+			return 0;
 		}
 
 		private static int IsConnectedTo(ILua lua)
@@ -259,12 +347,12 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 From = Entry.GetCoordinates(lua.GetVector(2));
-			Vector3 To = Entry.GetCoordinates(lua.GetVector(3));
+			Vector3 From = Map.GetCoordinates(lua.GetVector(2));
+			Vector3 To = Map.GetCoordinates(lua.GetVector(3));
 
-			lua.PushBool(Entry.IsConnectedTo(From, To));
+			lua.PushBool(Map.IsConnectedTo(From, To));
 
 			return 1;
 		}
@@ -275,13 +363,13 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(4, TYPES.NUMBER)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 From = Entry.GetCoordinates(lua.GetVector(2));
-			Vector3 To = Entry.GetCoordinates(lua.GetVector(3));
+			Vector3 From = Map.GetCoordinates(lua.GetVector(2));
+			Vector3 To = Map.GetCoordinates(lua.GetVector(3));
 			float Cost = (float)lua.GetNumber(4);
 
-			lua.PushBool(Entry.ConnectTo(From, To, Cost));
+			lua.PushBool(Map.ConnectTo(From, To, Cost));
 
 			return 1;
 		}
@@ -291,12 +379,12 @@ namespace CombatNode.Mapping
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
 			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 From = Entry.GetCoordinates(lua.GetVector(2));
-			Vector3 To = Entry.GetCoordinates(lua.GetVector(3));
+			Vector3 From = Map.GetCoordinates(lua.GetVector(2));
+			Vector3 To = Map.GetCoordinates(lua.GetVector(3));
 
-			lua.PushBool(Entry.DisconnectFrom(From, To));
+			lua.PushBool(Map.DisconnectFrom(From, To));
 
 			return 1;
 		}
@@ -305,11 +393,11 @@ namespace CombatNode.Mapping
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
 			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			Vector3 Coordinates = Entry.GetCoordinates(lua.GetVector(2));
+			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
 
-			lua.PushBool(Entry.RemoveNode(Coordinates));
+			lua.PushBool(Map.RemoveNode(Coordinates));
 
 			return 0;
 		}
@@ -317,9 +405,9 @@ namespace CombatNode.Mapping
 		private static int ClearNodes(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			lua.PushNumber(Entry.ClearNodes());
+			lua.PushNumber(Map.ClearNodes());
 
 			return 1;
 		}
@@ -327,9 +415,9 @@ namespace CombatNode.Mapping
 		private static int PurgeUnused(ILua lua)
 		{
 			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
-			if (!Grids.TryGetValue(lua.GetString(1), out Grid Entry)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
 
-			lua.PushNumber(Entry.PurgeUnused());
+			lua.PushNumber(Map.PurgeUnused());
 
 			return 1;
 		}

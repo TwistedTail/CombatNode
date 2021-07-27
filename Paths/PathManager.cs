@@ -35,13 +35,13 @@ namespace CombatNode.Paths
 			result.Clear();
 		}
 
-		private static bool QueuePath(Grid grid, string id, Vector3 from, Vector3 to)
+		private static bool QueuePath(Grid grid, string id, Vector3 from, Vector3 to, bool useLocked)
 		{
 			if (Results.ContainsKey(id)) { return false; }
 			if (!grid.Nodes.TryGetValue(Node.GetKey(from), out Node From)) { return false; }
 			if (!grid.Nodes.TryGetValue(Node.GetKey(to), out Node To)) { return false; }
 
-			PathFinder Finder = new(grid, From, To);
+			PathFinder Finder = new(grid, From, To, useLocked);
 
 			Task.Run(() =>
 			{
@@ -68,8 +68,9 @@ namespace CombatNode.Paths
 			Grid Entry = GridManager.GetGrid(GridName);
 			Vector3 From = Entry.GetCoordinates(lua.GetVector(3));
 			Vector3 To = Entry.GetCoordinates(lua.GetVector(4));
+			bool UseLocked = lua.IsType(5, TYPES.BOOL) ? lua.GetBool(5) : true;
 
-			lua.PushBool(QueuePath(Entry, Identifier, From, To));
+			lua.PushBool(QueuePath(Entry, Identifier, From, To, UseLocked));
 
 			return 1;
 		}
