@@ -325,7 +325,7 @@ namespace CombatNode.Mapping
 
 			lua.PushBool(Map.LockNode(Key));
 
-			return 0;
+			return 1;
 		}
 
 		private static int UnlockNode(ILua lua)
@@ -337,9 +337,9 @@ namespace CombatNode.Mapping
 			Vector3 Coordinates = Map.GetCoordinates(lua.GetVector(2));
 			string Key = Node.GetKey(Coordinates);
 
-			lua.PushBool(Map.LockNode(Key));
+			lua.PushBool(Map.UnlockNode(Key));
 
-			return 0;
+			return 1;
 		}
 
 		private static int IsConnectedTo(ILua lua)
