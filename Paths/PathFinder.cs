@@ -69,7 +69,7 @@ namespace CombatNode.Paths
 				float MoveCost = BaseCost + Entry.Value;
 				bool Exists = gScore.ContainsKey(Side);
 
-				if (!Exists | MoveCost < gScore[Side])
+				if (!Exists || MoveCost < gScore[Side])
 				{
 					if (Exists)
 					{
