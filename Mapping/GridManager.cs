@@ -29,6 +29,7 @@ namespace CombatNode.Mapping
 			LuaStack.PushGlobalFunction(lua, "GetNodeList", GetNodeList);
 			LuaStack.PushGlobalFunction(lua, "GetNodesInSphere", GetNodesInSphere);
 			LuaStack.PushGlobalFunction(lua, "GetConnectedNodesInRadius", GetConnectedNodesInRadius);
+			LuaStack.PushGlobalFunction(lua, "GetHidingSpotsInRadius", GetHidingSpotsInRadius);
 
 			// Node functions
 			LuaStack.PushGlobalFunction(lua, "HasNode", HasNode);
@@ -181,6 +182,36 @@ namespace CombatNode.Mapping
 			float Radius = (float)lua.GetNumber(3);
 			bool UseLocked = lua.IsType(4, TYPES.BOOL) ? lua.GetBool(4) : true;
 			Node[] Nodes = Map.GetConnectedNodesInRadius(Center, Radius, UseLocked);
+			int Index = 0;
+
+			lua.CreateTable();
+
+			foreach (Node Current in Nodes)
+			{
+				Index++;
+
+				lua.PushNumber(Index);
+
+				Current.PushToLua(lua);
+
+				lua.SetTable(-3);
+			}
+
+			return 1;
+		}
+
+		private static int GetHidingSpotsInRadius(ILua lua)
+		{
+			if (!lua.IsType(1, TYPES.STRING)) { return 0; }
+			if (!lua.IsType(2, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(3, TYPES.Vector)) { return 0; }
+			if (!lua.IsType(4, TYPES.NUMBER)) { return 0; }
+			if (!Grids.TryGetValue(lua.GetString(1), out Grid Map)) { return 0; }
+
+			Vector3 Center = lua.GetVector(2);
+			Vector3 Origin = lua.GetVector(3);
+			float Radius = (float)lua.GetNumber(4);
+			Node[] Nodes = Map.GetHidingSpotsInRadius(Center, Origin, Radius);
 			int Index = 0;
 
 			lua.CreateTable();

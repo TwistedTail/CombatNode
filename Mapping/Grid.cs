@@ -113,6 +113,67 @@ namespace CombatNode.Mapping
 			return Result.ToArray();
 		}
 
+		private void CheckHidingSpot(HashSet<Node> result, Node current, Vector3 origin)
+		{
+			Vector3 Direction = Vector3.Normalize(origin - current.FootPos);
+			Vector3 Center = current.Coordinates;
+			Vector3 Offset = Vector3.Zero;
+
+			Direction.X = MathF.Round(Direction.X);
+			Direction.Y = MathF.Round(Direction.Y);
+			Direction.Z = 0f;
+
+			for (int I = -1; I < 2; I++)
+			{
+				Offset.Z = I;
+
+				string Key = Node.GetKey(Center + Offset);
+
+				if (!Nodes.TryGetValue(Key, out Node Side)) { continue; }
+				if (Side.Locked) { continue; }
+
+				result.Add(Side);
+
+				return;
+			}
+		}
+
+		public Node[] GetHidingSpotsInRadius(Vector3 center, Vector3 origin, float radius)
+		{
+			Vector3 Coordinates = GetCoordinates(center);
+			HashSet<Node> Result = new();
+
+			if (!Nodes.TryGetValue(Node.GetKey(Coordinates), out Node First)) { return Result.ToArray(); }
+
+			HashSet<Node> Open = new() { First };
+			HashSet<Node> Closed = new();
+			Vector3 FootCenter = First.FootPos;
+			float RadiusSqr = radius * radius;
+
+			while (Open.Count > 0)
+			{
+				Node Current = Open.First();
+
+				Open.Remove(Current);
+				Closed.Add(Current);
+
+				CheckHidingSpot(Result, Current, origin);
+
+				foreach (var Entry in Current.Sides)
+				{
+					if (!Nodes.TryGetValue(Entry.Key, out Node Side)) { continue; }
+					if (Side.Locked) { continue; }
+					if (Closed.Contains(Side)) { continue; }
+					if (Open.Contains(Side)) { continue; }
+					if (Vector3.DistanceSquared(FootCenter, Side.FootPos) > RadiusSqr) { continue; }
+
+					Open.Add(Side);
+				}
+			}
+
+			return Result.ToArray();
+		}
+
 		public bool LockNode(string key)
 		{
 			if (!Nodes.TryGetValue(key, out Node Affected)) { return false; }
